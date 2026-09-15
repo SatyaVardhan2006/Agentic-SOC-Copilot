@@ -1,0 +1,47 @@
+# PLAYBOOK: Suspicious PowerShell Execution Investigation & Response
+PLAYBOOK_ID: PB-IR-001
+CATEGORY: Execution / Defense Evasion
+MITRE_ATT&CK: T1059.001 (Command and Scripting Interpreter: PowerShell), T1027 (Obfuscated Files or Information), T1105 (Ingress Tool Transfer)
+
+## Overview
+PowerShell is a primary Living-off-the-Land (LotL) administrative tool frequently abused by threat actors for in-memory code execution, payload delivery, credential theft, and reconnaissance. Because PowerShell is native to Windows, malicious activity blends into standard enterprise administrative patterns.
+
+## Indicators & Suspicious Command-Line Arguments
+Flag any PowerShell process or child process exhibiting these flags or script block strings:
+1. Obfuscation & Encoding:
+   - `-EncodedCommand`, `-enc`, `-e`, `-ec` followed by base64-encoded UTF-16LE strings.
+   - String concatenation, character replacement, environment variable extraction (`$env:ComSpec`), or backtick splitting.
+2. Execution Policy Bypasses:
+   - `-ExecutionPolicy Bypass`, `-ep bypass`, `-NoProfile`, `-NonInteractive`, `-WindowStyle Hidden`, `-w hidden`.
+3. Web Downloads & In-Memory Droppers:
+   - `Net.WebClient`, `DownloadString`, `DownloadFile`, `Invoke-WebRequest`, `iwr`, `Invoke-RestMethod`, `irm`, `Start-BitsTransfer`.
+   - Pipeline execution into `Invoke-Expression` or `iex`.
+4. In-Memory Injection & API Calls:
+   - Reflection (`[System.Reflection.Assembly]::Load`), P/Invoke (`Add-Type`), VirtualAlloc, WriteProcessMemory, CreateRemoteThread.
+   - Known offensive modules: Mimikatz, SharpHound, PowerUp, Invoke-Empire, BloodHound.
+
+## Step-by-Step Investigation Procedure
+1. Identify Parent-Child Process Hierarchy:
+   - Inspect the spawning parent process (e.g., `cmd.exe`, `excel.exe`, `winword.exe`, `wmiprvse.exe`, `wscript.exe`). Spawns from Office applications or web browsers are critical indicators of phishing or drive-by compromise.
+2. Extract and Decode Script Blocks:
+   - Check Windows Event ID 4104 (Script Block Logging) and Event ID 4688 (Process Creation with Argument Logging).
+   - Decode base64 payloads to reveal target C2 domains, external IP addresses, ports, and downloaded filenames.
+3. Network Traffic Correlation:
+   - Cross-reference the timestamp of the PowerShell execution with firewall and proxy logs.
+   - Inspect DNS queries, established TCP/443 or TCP/80 connections, and beaconing frequency to external IP addresses.
+4. Host Artifact Inspection:
+   - Review PowerShell console history located at `%APPDATA%\Microsoft\Windows\PowerShell\PSReadLine\ConsoleHost_history.txt`.
+   - Inspect temp directories (`C:\Windows\Temp`, `C:\Users\<user>\AppData\Local\Temp`) for dropped `.ps1`, `.bat`, or `.dll` artifacts.
+
+## Recommended Containment & Remediation Actions
+1. Immediate Containment:
+   - Isolate the infected endpoint from the local network via EDR/firewall host isolation to halt lateral movement.
+   - Terminate the malicious PowerShell process tree and any spawned subprocesses.
+   - Block identified external destination IPs and C2 domains at the perimeter firewall / DNS sinkhole.
+2. Eradication:
+   - Remove scheduled tasks, registry Run/RunOnce keys, and WMI event subscriptions created by the script.
+   - Delete all staged scripts, temporary binaries, and payloads from the filesystem.
+3. Recovery:
+   - Force password reset for all user accounts authenticated on the endpoint during the incident.
+   - Revoke active Kerberos and OAuth refresh tokens.
+   - Restore endpoint from a known good baseline or reimage if kernel/rootkit modifications are suspected.

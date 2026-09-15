@@ -1,0 +1,47 @@
+# PLAYBOOK: Enterprise Incident Response Lifecycle & Methodology
+PLAYBOOK_ID: PB-IR-000
+CATEGORY: Core Incident Response / NIST SP 800-61
+MITRE_ATT&CK: Cross-Tactic Response Framework
+
+## Overview
+This playbook defines the standardized operational lifecycle for handling computer security incidents across enterprise environments in alignment with NIST SP 800-61 Rev. 2 guidelines.
+
+## Incident Severity Matrix
+- CRITICAL (P1): Active malware spreading, ransomware encryption in progress, confirmed domain controller compromise, widespread exfiltration of PII/PHI/financial assets. SLA: < 15 minutes.
+- HIGH (P2): Unauthorized interactive shell access, active C2 communication, privilege escalation on sensitive servers, critical infrastructure vulnerability exploitation. SLA: < 30 minutes.
+- MEDIUM (P3): Single workstation malware infection without lateral spread, unauthorized software execution, brute-force attempts on non-critical systems. SLA: < 2 hours.
+- LOW (P4): Policy violations, isolated port scans, adware/PUP detections, spam/phishing emails blocked pre-delivery. SLA: < 8 hours.
+
+## Four-Phase Response Methodology
+
+### Phase 1: Preparation & Detection
+- Maintain logging visibility across endpoints (Sysmon/EDR), network edges, identity providers (Active Directory/Entra ID), and cloud workloads.
+- Triage incoming alerts by validating fidelity, filtering false positives, and scoping potential blast radius.
+- Assign incident lead and establish an encrypted, out-of-band communication channel for high/critical incidents.
+
+### Phase 2: Scoping & Deep Investigation
+- Collect digital evidence: volatile memory captures, process lists, network socket connections, disk timelines, and authentication records.
+- Extract Indicators of Compromise (IOCs): IPv4/IPv6 addresses, fully qualified domain names (FQDNs), URI paths, MD5/SHA256 file hashes, certificate serials.
+- Map threat actor tactics, techniques, and procedures (TTPs) against the MITRE ATT&CK framework.
+
+### Phase 3: Containment, Eradication & Recovery
+- Short-Term Containment:
+  * Network isolation of affected hosts (EDR software containment).
+  * Perimeter firewall blocking of C2 IP addresses and egress ports.
+  * DNS sinkholing of malicious domains.
+  * Immediate revocation of compromised user sessions and account lockout.
+- Long-Term Containment:
+  * Temporary network segmentation rules to isolate vulnerable subnets.
+  * Stricter conditional access policies (MFA enforcement, device compliance).
+- Eradication:
+  * Terminate malicious processes and services.
+  * Remove persistence mechanisms (cron jobs, systemd services, scheduled tasks, registry modifications).
+  * Clean or re-image contaminated endpoints.
+- Recovery:
+  * Validate system integrity before reconnecting to production networks.
+  * Gradual restoration of services with enhanced monitoring.
+
+### Phase 4: Post-Incident Activity & Lessons Learned
+- Compile comprehensive Incident Summary Report detailing timeline, root cause, impact, and response metrics.
+- Update SIEM correlation rules, YARA signatures, and detection playbooks based on lessons learned.
+- Securely archive all collected forensic artifacts for regulatory compliance or legal proceedings.

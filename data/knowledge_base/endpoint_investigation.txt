@@ -1,0 +1,46 @@
+# PLAYBOOK: Host-Level Endpoint Threat Investigation & Persistence Analysis
+PLAYBOOK_ID: PB-IR-003
+CATEGORY: Persistence / Defense Evasion / Endpoint Forensics
+MITRE_ATT&CK: T1547 (Boot or Logon Autostart Execution), T1053 (Scheduled Task/Job), T1543 (Create or Modify System Process)
+
+## Overview
+Endpoint threats involve unauthorized code execution and persistence mechanisms installed on servers, workstations, or virtual workloads. Attackers establish survivability across reboots to maintain continuous command and control (C2).
+
+## High-Risk Persistence Mechanisms
+1. Scheduled Tasks and Cron Jobs:
+   - Creation of scheduled tasks via `schtasks.exe /create`, PowerShell `Register-ScheduledTask`, or at jobs.
+   - Tasks executing binaries from world-writable directories (`C:\ProgramData\`, `C:\Users\Public\`, `/tmp/`).
+2. Windows Registry Run Keys & Startup Folders:
+   - `HKLM\Software\Microsoft\Windows\CurrentVersion\Run` and `RunOnce`.
+   - `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`.
+   - Startup directory shortcuts (`%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup`).
+3. Services and Daemons:
+   - Creation of new system services using `sc.exe create` or PowerShell `New-Service`.
+   - Service binary path hijack (`binPath` modification).
+4. WMI Event Subscriptions:
+   - `__EventFilter`, `__EventConsumer`, and `__FilterToConsumerBinding` classes used for stealthy, fileless persistence.
+
+## Step-by-Step Investigation Procedure
+1. Process Tree Forensics:
+   - Examine the full execution genealogy: Grandparent -> Parent -> Process -> Children.
+   - Identify abnormal parent-child relationships (e.g., `spoolsv.exe` launching `cmd.exe`, `sqlservr.exe` launching `powershell.exe`).
+   - Check digital signature verification status and binary hashing (SHA256).
+2. Network Sockets & Established Sockets:
+   - Check `netstat -ano` or Sysmon Event ID 3 for established outbound connections from abnormal processes.
+   - Verify if non-browser binaries (e.g. `rundll32.exe`, `regsvr32.exe`, `certutil.exe`) are initiating external HTTPS connections.
+3. Autorun & Persistence Enumeration:
+   - Query scheduled tasks (`schtasks /query /fo LIST /v`) created or modified in the last 24-48 hours.
+   - Inspect registry Run keys and active Windows Services with unusual display names or unsigned binary paths.
+
+## Recommended Containment & Remediation Actions
+1. Immediate Containment:
+   - EDR host isolation: sever all TCP/IP connectivity except the secure management tunnel to the EDR console.
+   - Kill active malicious process PIDs and suspend suspicious parent processes.
+   - Capture memory dump (`.dmp`) before termination if live memory forensics is required.
+2. Eradication:
+   - Delete rogue scheduled tasks: `schtasks /delete /tn "<task_name>" /f`.
+   - Clean registry keys and delete malicious binaries from disk.
+   - Verify uninstallation of rogue system services: `sc.exe delete "<service_name>"`.
+3. Recovery:
+   - Scan entire filesystem with up-to-date antimalware signatures.
+   - Reconnect host to network after verifying clean process baseline and persistence audit.

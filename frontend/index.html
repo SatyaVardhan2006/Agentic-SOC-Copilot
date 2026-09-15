@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agentic SOC Copilot | Autonomous Security Operations Assistant</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- Top Navigation Bar -->
+  <header class="navbar">
+    <div class="nav-brand">
+      <div class="brand-icon">🛡️</div>
+      <div class="brand-text">
+        <span class="brand-title">AGENTIC SOC COPILOT</span>
+        <span class="brand-subtitle">Autonomous Security Operations & Incident Response</span>
+      </div>
+    </div>
+    <div class="nav-status">
+      <div class="status-indicator">
+        <span class="status-dot healthy"></span>
+        <span id="system-status-text">Backend Online</span>
+      </div>
+      <div class="llm-pill" id="llm-mode-pill">
+        <span class="pill-label">LLM ENGINE:</span>
+        <span class="pill-value" id="llm-mode-val">Detecting...</span>
+      </div>
+      <div class="kb-pill">
+        <span class="pill-label">RAG CORPUS:</span>
+        <span class="pill-value" id="kb-count-val">4 Playbooks</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Application Container -->
+  <main class="main-container">
+    <!-- Left Column: Input Form & Recent Incidents -->
+    <aside class="sidebar">
+      <section class="card input-card">
+        <div class="card-header">
+          <h2>Security Incident Ingestion</h2>
+          <button type="button" class="btn-secondary btn-sm" id="btn-load-sample">
+            ⚡ Load Sample Incident
+          </button>
+        </div>
+        <p class="card-desc">Submit raw SIEM/EDR alert telemetry to initiate autonomous multi-agent analysis.</p>
+
+        <form id="incident-form">
+          <div class="form-group">
+            <label for="incident-id">Incident ID</label>
+            <input type="text" id="incident-id" placeholder="e.g. INC-2026-8821" required />
+          </div>
+
+          <div class="form-group">
+            <label for="incident-title">Incident Title</label>
+            <input type="text" id="incident-title" placeholder="e.g. Suspicious Obfuscated PowerShell Execution" required />
+          </div>
+
+          <div class="form-group">
+            <label for="raw-logs">Security Events / Raw Telemetry</label>
+            <textarea id="raw-logs" rows="9" placeholder="Paste Sysmon, firewall, EDR, or audit log entries here..." required></textarea>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn-primary" id="btn-analyze">
+              <span class="btn-text">🚀 Run Multi-Agent Pipeline</span>
+              <span class="spinner" id="analyze-spinner" style="display: none;"></span>
+            </button>
+            <button type="button" class="btn-outline" id="btn-clear">Clear</button>
+          </div>
+        </form>
+      </section>
+
+      <!-- Recent Incidents History -->
+      <section class="card history-card">
+        <div class="card-header">
+          <h3>Incident History (SQLite)</h3>
+          <button type="button" class="btn-icon" id="btn-refresh-history" title="Refresh list">🔄</button>
+        </div>
+        <div id="recent-incidents-list" class="recent-list">
+          <div class="empty-state">No past incidents recorded yet.</div>
+        </div>
+      </section>
+    </aside>
+
+    <!-- Right Column: Agent Workflow & Findings -->
+    <section class="content-area">
+      <!-- Workflow Trace Stepper -->
+      <section class="card trace-card">
+        <div class="card-header">
+          <h3>LangGraph Multi-Agent Execution Trace</h3>
+          <span class="badge badge-neutral" id="pipeline-status">IDLE</span>
+        </div>
+        <div class="stepper-container">
+          <div class="step-item" id="step-triage">
+            <div class="step-marker">1</div>
+            <div class="step-content">
+              <span class="step-name">Triage Agent</span>
+              <span class="step-desc">Severity & Category</span>
+            </div>
+          </div>
+          <div class="step-divider"></div>
+          <div class="step-item" id="step-rag">
+            <div class="step-marker">2</div>
+            <div class="step-content">
+              <span class="step-name">RAG Agent</span>
+              <span class="step-desc">Playbook Knowledge</span>
+            </div>
+          </div>
+          <div class="step-divider"></div>
+          <div class="step-item" id="step-investigation">
+            <div class="step-marker">3</div>
+            <div class="step-content">
+              <span class="step-name">Investigation Agent</span>
+              <span class="step-desc">IOCs & Forensics</span>
+            </div>
+          </div>
+          <div class="step-divider"></div>
+          <div class="step-item" id="step-response">
+            <div class="step-marker">4</div>
+            <div class="step-content">
+              <span class="step-name">Response Agent</span>
+              <span class="step-desc">Mitigation Plan</span>
+            </div>
+          </div>
+          <div class="step-divider"></div>
+          <div class="step-item" id="step-approval">
+            <div class="step-marker">5</div>
+            <div class="step-content">
+              <span class="step-name">Human Gate</span>
+              <span class="step-desc">Analyst Approval</span>
+            </div>
+          </div>
+        </div>
+        <div id="live-trace-log" class="trace-log-box" style="display: none;"></div>
+      </section>
+
+      <!-- Welcome Placeholder (shown before first analysis) -->
+      <div id="results-placeholder" class="card placeholder-card">
+        <div class="placeholder-icon">🔍</div>
+        <h3>No Incident Under Active Investigation</h3>
+        <p>Submit an alert on the left or click <strong>"Load Sample Incident"</strong> to see the autonomous multi-agent pipeline analyze events, extract IOCs, retrieve security playbooks, and formulate an approved response plan.</p>
+      </div>
+
+      <!-- Results Display Container -->
+      <div id="results-container" style="display: none;">
+        <!-- Top Metrics Row -->
+        <div class="results-grid-top">
+          <!-- Triage Card -->
+          <div class="card triage-card">
+            <div class="card-header">
+              <h3>Triage & Classification</h3>
+              <span id="badge-severity" class="badge badge-high">HIGH</span>
+            </div>
+            <div class="triage-body">
+              <div class="meta-row">
+                <span class="meta-label">Attack Category:</span>
+                <span class="meta-value font-mono" id="val-category">-</span>
+              </div>
+              <div class="meta-row">
+                <span class="meta-label">Incident Scope:</span>
+                <span class="meta-value" id="val-incident-title">-</span>
+              </div>
+              <div class="summary-box">
+                <span class="meta-label">Triage Rationale:</span>
+                <p id="val-triage-summary">-</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Human Approval & Simulated Containment Action -->
+          <div class="card approval-card" id="approval-card">
+            <div class="card-header">
+              <h3>Human-in-the-Loop Approval</h3>
+              <span id="badge-approval-status" class="badge badge-warning">PENDING APPROVAL</span>
+            </div>
+            <div class="approval-body">
+              <div class="approval-notice">
+                <span class="notice-icon">⚠️</span>
+                <span>Automated containment requires explicit analyst authorization. All containment actions are <strong>strictly simulated</strong>.</span>
+              </div>
+              <div class="token-box">
+                <span class="meta-label">Approval Token:</span>
+                <code id="val-approval-token" class="token-code">-</code>
+              </div>
+              <div class="actions-to-approve">
+                <span class="meta-label">Simulated Actions Pending Execution:</span>
+                <ul id="list-simulated-actions" class="sim-actions-list"></ul>
+              </div>
+              <div class="approval-action-wrapper" id="approval-btn-wrapper">
+                <button type="button" class="btn-success" id="btn-approve-containment">
+                  🛡️ Authorize & Simulate Containment
+                </button>
+              </div>
+              <div id="approval-result-box" class="approval-result-box" style="display: none;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Investigation & IOCs Grid -->
+        <div class="results-grid-middle">
+          <!-- Extracted IOCs -->
+          <div class="card iocs-card">
+            <div class="card-header">
+              <h3>Extracted Indicators of Compromise (IOCs)</h3>
+              <span class="badge badge-info" id="badge-ioc-count">0 Detected</span>
+            </div>
+            <div class="iocs-body">
+              <div class="ioc-section">
+                <h4>Network Addresses (IPs)</h4>
+                <div id="iocs-ips-list" class="tag-cloud"></div>
+              </div>
+              <div class="ioc-section">
+                <h4>Suspicious Domains</h4>
+                <div id="iocs-domains-list" class="tag-cloud"></div>
+              </div>
+              <div class="ioc-section">
+                <h4>Extracted Cryptographic Hashes</h4>
+                <div id="iocs-hashes-list" class="tag-cloud"></div>
+              </div>
+              <div class="ioc-section">
+                <h4>Suspicious Command Strings & Decoded Obfuscation</h4>
+                <div id="iocs-commands-list" class="code-snippets"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Retrieved RAG Playbooks -->
+          <div class="card rag-card">
+            <div class="card-header">
+              <h3>Retrieved Knowledge Playbooks (RAG)</h3>
+              <span class="badge badge-purple" id="badge-rag-count">0 Playbooks</span>
+            </div>
+            <div id="rag-playbooks-list" class="rag-body"></div>
+          </div>
+        </div>
+
+        <!-- Narrative & Response Plan Grid -->
+        <div class="results-grid-bottom">
+          <!-- Detailed Investigation Findings -->
+          <div class="card findings-card">
+            <div class="card-header">
+              <h3>Investigation Findings Report</h3>
+            </div>
+            <div id="val-investigation-findings" class="markdown-body"></div>
+          </div>
+
+          <!-- Recommended Response Plan -->
+          <div class="card response-card">
+            <div class="card-header">
+              <h3>Recommended Incident Response Plan</h3>
+            </div>
+            <div class="response-body">
+              <ol id="val-response-plan" class="ordered-plan"></ol>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <span>Agentic SOC Copilot v1.0.0 &bull; Built with LangGraph, FastAPI, scikit-learn RAG & SQLite &bull; Strictly Simulated Containment</span>
+  </footer>
+
+  <script src="/static/script.js"></script>
+</body>
+</html>

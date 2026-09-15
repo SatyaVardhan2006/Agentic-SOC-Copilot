@@ -1,0 +1,42 @@
+# PLAYBOOK: Suspicious Login & Credential Access Investigation
+PLAYBOOK_ID: PB-IR-002
+CATEGORY: Credential Access / Initial Access
+MITRE_ATT&CK: T1078 (Valid Accounts), T1110 (Brute Force), T1556 (Modify Authentication Process)
+
+## Overview
+Compromised identity and credential abuse are the most common vectors for initial access and lateral movement. Attackers leverage password spraying, credential stuffing, session token theft (Pass-the-Cookie), and MFA fatigue to bypass perimeter defenses.
+
+## Detection Indicators
+1. Impossible Travel / Geolocation Velocity:
+   - Successful logins from geographically distant locations within an impossible timeframe (e.g., London and Tokyo within 20 minutes).
+   - Logins from known anonymization networks (Tor exit nodes, residential proxies, VPN services).
+2. Authentication Anomalies:
+   - Spikes in Event ID 4625 (An Account Failed to Log On) followed by a single Event ID 4624 (Successful Logon).
+   - Unusual logon types: Type 3 (Network logon), Type 10 (RemoteInteractive/RDP) outside business hours or from unexpected subnets.
+3. MFA Bypass & Token Hijacking:
+   - Repeated MFA push denials followed by an approval within seconds (MFA push exhaustion).
+   - Session activity without corresponding primary authentication events (cookie replay).
+
+## Step-by-Step Investigation Procedure
+1. Identity Scope Verification:
+   - Identify the user principal name (UPN), assigned roles, group memberships, and administrative privileges.
+   - Check if the account possesses Domain Admin, Cloud Application Admin, or service account privileges.
+2. Authentication Timeline Analysis:
+   - Pull sign-in logs from Identity Providers (Entra ID / Okta / Active Directory) covering 7 days prior to the alert.
+   - Correlate Source IP, User-Agent string, Client App, Device ID, and ASN.
+3. Post-Authentication Activity Audit:
+   - Inspect mailbox audit logs for unauthorized inbox forwarding rules (`New-InboxRule`) or delegate access.
+   - Check for new OAuth app consents or service principal credential additions.
+   - Look for lateral RDP/SMB connections initiated from the user's workstation.
+
+## Recommended Containment & Remediation Actions
+1. Immediate Containment:
+   - Revoke all active user sessions and refresh tokens immediately (`Revoke-AzureADUserAllRefreshToken`).
+   - Temporarily disable or reset the user account password in Active Directory.
+   - Block malicious source IPs at the identity provider conditional access level and firewall.
+2. Eradication:
+   - Remove any fraudulent MFA devices or phone numbers registered to the account.
+   - Delete malicious inbox rules, forwarding configurations, and rogue OAuth application grants.
+3. Recovery:
+   - Guide the legitimate user through out-of-band identity verification and secure password reset.
+   - Enforce FIDO2 / hardware-backed phishing-resistant MFA keys.
