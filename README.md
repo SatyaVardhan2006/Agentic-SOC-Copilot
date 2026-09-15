@@ -193,6 +193,36 @@ Click **"⚡ Load Sample Incident"** on the dashboard, then click **"🚀 Run Mu
 
 ---
 
+## 🌐 Production Deployment on Vercel
+
+The application is deployed live in production on Vercel:
+
+- **Live Web Dashboard**: [https://agentic-soc-copilot.vercel.app](https://agentic-soc-copilot.vercel.app)
+- **Health Check**: [https://agentic-soc-copilot.vercel.app/health](https://agentic-soc-copilot.vercel.app/health)
+- **Recent Incidents**: [https://agentic-soc-copilot.vercel.app/incidents/recent](https://agentic-soc-copilot.vercel.app/incidents/recent)
+
+### 1. Vercel Architecture
+- **Runtime**: Python 3.12 Serverless via `@vercel/python` and `api/index.py`.
+- **Routing**: `vercel.json` routes incoming traffic to the ASGI FastAPI application while preserving full endpoint fidelity (`/`, `/health`, `/incidents/analyze`, etc.).
+- **Static Assets**: Frontend CSS, JavaScript, and HTML are delivered cleanly through FastAPI's static mount and root route.
+
+### 2. Environment Variables
+- `OPENAI_API_KEY`: *(Optional)* API key for live OpenAI LLM calls. If left empty or omitted, the application runs in high-fidelity deterministic fallback mode.
+- `OPENAI_MODEL`: *(Optional, default: `gpt-4o-mini`)* LLM model selection.
+
+### 3. Serverless SQLite Memory Consideration
+> [!NOTE]
+> In Vercel serverless functions, the local filesystem outside `/tmp` is read-only. `app/memory.py` automatically routes SQLite database storage to `/tmp/incidents.db` when running in Vercel (`VERCEL=1`), while writing to `data/incidents.db` during local execution. Note that `/tmp` in serverless environments is ephemeral across cold boots. For long-term enterprise multi-region storage, an external managed database (e.g. Supabase or PostgreSQL) can be plugged in by updating `app/memory.py`.
+
+### 4. How to Redeploy
+```bash
+vercel deploy --prod
+```
+
+For complete deployment details, see [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
+
+---
+
 ## 🐳 Running with Docker
 
 You can package and run the entire application in a lightweight container:

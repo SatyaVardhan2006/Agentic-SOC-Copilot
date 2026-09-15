@@ -4,13 +4,39 @@ from pathlib import Path
 from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
 
-DEFAULT_DB_PATH = Path(__file__).resolve().parent.parent / "data" / "incidents.db"
+import os
+import tempfile
+
+def _resolve_default_db_path() -> Path:
+    """Return writable DB path: /tmp in Vercel/serverless environments, local data/ otherwise."""
+    if os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME"):
+        return Path(tempfile.gettempdir()) / "incidents.db"
+    
+    local_path = Path(__file__).resolve().parent.parent / "data" / "incidents.db"
+    try:
+        local_path.parent.mkdir(parents=True, exist_ok=True)
+        test_file = local_path.parent / ".write_test"
+        with open(test_file, "w") as f:
+            f.write("ok")
+        test_file.unlink(missing_ok=True)
+        return local_path
+    except (OSError, PermissionError):
+        return Path(tempfile.gettempdir()) / "incidents.db"
+
+
+DEFAULT_DB_PATH = _resolve_default_db_path()
 
 
 def get_db_connection(db_path: Optional[Path] = None) -> sqlite3.Connection:
     target_path = db_path or DEFAULT_DB_PATH
-    target_path.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(target_path))
+    try:
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        conn = sqlite3.connect(str(target_path))
+    except (OSError, PermissionError, sqlite3.OperationalError):
+        # Fallback to temp directory if specified target path fails
+        temp_path = Path(tempfile.gettempdir()) / "incidents.db"
+        temp_path.parent.mkdir(parents=True, exist_ok=True)
+        conn = sqlite3.connect(str(temp_path))
     conn.row_factory = sqlite3.Row
     # Ensure incidents table exists
     conn.execute("""

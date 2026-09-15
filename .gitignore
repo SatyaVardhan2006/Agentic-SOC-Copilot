@@ -38,6 +38,9 @@ htmlcov/
 # Local databases & runtime logs
 data/incidents.db
 data/*.sqlite3
+*.db
+*.sqlite
+*.sqlite3
 *.log
 
 # Environment variables
@@ -49,3 +52,8 @@ data/*.sqlite3
 Thumbs.db
 .vscode/
 .idea/
+.vercel/
+
+
+.vercel
+.env*
